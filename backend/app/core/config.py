@@ -1,10 +1,14 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
-from typing import List
+from typing import List, Optional
+import os
 
 class Settings(BaseSettings):
-    GEMINI_API_KEY: str = "AIzaSyCHaxTn3P6BJ79qCgFyeQhtXPBKxk05pIk"
-    GEMINI_MODEL: str = "gemini-2.0-flash" # Defaulting to a very common stable one if not set
+    # Mandatory
+    GEMINI_API_KEY: str
+    
+    # Optional with Defaults
+    GEMINI_MODEL: str = "gemini-2.5-flash"
     APP_HOST: str = "0.0.0.0"
     APP_PORT: int = 8000
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
@@ -17,12 +21,26 @@ class Settings(BaseSettings):
 
     @property
     def upload_path(self) -> Path:
-        # Get the backend root directory (where main.py's parent's parent is)
         base_dir = Path(__file__).resolve().parent.parent.parent
         path = base_dir / self.UPLOAD_DIR
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # Using pydantic-settings to load .env
+    model_config = SettingsConfigDict(
+        env_file=os.path.join(Path(__file__).parent.parent.parent, ".env"),
+        extra="ignore"
+    )
 
-settings = Settings()
+try:
+    settings = Settings()
+except Exception as e:
+    # Print a clean error if validation fails (e.g. missing API key)
+    import sys
+    print(f"\n[BACKEND CONFIG ERROR] Initialization failed: {e}")
+    print("Please ensure your 'backend/.env' file exists and contains GEMINI_API_KEY.\n")
+    # We allow the app to import but it will likely fail later if we don't exit.
+    # However, to avoid crashing the whole import chain if not desired, 
+    # we could just set a flag. But the user said "raise a clean readable backend error".
+    # We'll re-raise or exit.
+    sys.exit(1)

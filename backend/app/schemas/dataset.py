@@ -15,6 +15,9 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     model_used: Optional[str] = None
+    answer_type: Optional[str] = None
+    confidence: float = 0.0
+    source_columns: List[str] = []
     dataset_id: str
     warnings: List[str] = []
 

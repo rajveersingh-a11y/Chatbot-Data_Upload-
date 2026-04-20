@@ -6,7 +6,7 @@ import logging
 from app.schemas.dataset import UploadResponse, ChatRequest, ChatResponse, HealthResponse
 from app.services.data_query_service import try_answer_with_pandas
 from app.services.dataset_service import dataset_service
-from app.services.gemini_service import gemini_service
+from app.services.nvidia_service import nvidia_service
 from app.core.config import settings
 
 router = APIRouter()
@@ -70,8 +70,8 @@ async def chat_with_data(request: ChatRequest):
                 dataset_id=request.dataset_id
             )
         
-        # 2. Gemini fallback
-        context = dataset_service.get_context_for_gemini(request.dataset_id)
+        # 2. NVIDIA fallback
+        context = dataset_service.get_context_for_nvidia(request.dataset_id)
         prompt = f"""
         You are a senior data analyst. Use the context to answer the user question.
         GUIDELINES:
@@ -86,12 +86,20 @@ async def chat_with_data(request: ChatRequest):
         {request.message}
         """
         
-        res = await gemini_service.generate_response(prompt)
+        res = await nvidia_service.generate_response(prompt)
         
-        # If Gemini specifically returned an error-answer, return it
+        # If NVIDIA specifically returned an error-answer, return it
+        if res.get("error") and "AI ANALYSIS UNAVAILABLE" in res.get("answer", ""):
+             return ChatResponse(
+                answer=res["answer"],
+                model_used=res.get("model_used", "nvidia"),
+                dataset_id=request.dataset_id,
+                error=True
+            )
+        
         return ChatResponse(
             answer=res["answer"],
-            model_used=res.get("model_used", "gemini"),
+            model_used=res.get("model_used", "nvidia"),
             answer_type="insight",
             confidence=0.8 if not res.get("error") else 0.0,
             dataset_id=request.dataset_id,
@@ -110,9 +118,9 @@ async def chat_with_data(request: ChatRequest):
 
 @router.get("/health", response_model=HealthResponse)
 async def get_health():
-    gs = gemini_service.get_status()
+    ns = nvidia_service.get_status()
     return HealthResponse(
         status="ok",
-        gemini_initialized=gs["configured"],
-        active_model=gs["selected_model"]
+        nvidia_initialized=ns["configured"],
+        active_model=ns["selected_model"]
     )

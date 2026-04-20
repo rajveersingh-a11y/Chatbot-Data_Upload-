@@ -156,9 +156,9 @@ class DatasetService:
             "shape": list(df.shape)
         }
 
-    def get_context_for_gemini(self, dataset_id: str) -> str:
+    def get_context_for_nvidia(self, dataset_id: str) -> str:
         """
-        Prepares a structured, compact text summary for Gemini context.
+        Prepares a structured, compact text summary for NVIDIA context.
         """
         df = self.get_dataframe(dataset_id)
         if df is None:

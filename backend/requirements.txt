@@ -6,5 +6,4 @@ python-multipart
 pydantic
 pydantic-settings
 python-dotenv
-google-genai
 httpx

@@ -2,6 +2,47 @@
 
 A simple, working local MVP to chat with your CSV or Excel datasets using FastAPI, React, and Gemini AI.
 
+## Project Architecture
+
+```mermaid
+graph TD
+    User((User)) -->|Uploads File/Asks Question| Frontend[React + Vite Frontend]
+    Frontend -->|API Requests| Backend[FastAPI Backend]
+    
+    subgraph Backend Services
+        Backend -->|Load/Profile| DS[Dataset Service]
+        DS -->|Store| Storage[(uploads/)]
+        Backend -->|Route Question| DQS[Data Query Service]
+        DQS -->|Deterministic Pandas Query| DS
+        Backend -->|Natural Language Reasoning| GS[Gemini Service]
+        GS -->|Prompt with Context| GeminiAPI[Google Gemini API]
+    end
+    
+    DQS -->|Return Python Result| Backend
+    GS -->|Return AI Result| Backend
+    Backend -->|Return JSON Response| Frontend
+```
+
+## Detailed Tech Stack
+
+### Frontend
+- **Framework:** React 18
+- **Build Tool:** Vite
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
+- **API Client:** Axios
+- **State Management:** React Hooks (useState/useEffect)
+
+### Backend
+- **Framework:** FastAPI
+- **Web Server:** Uvicorn
+- **Language:** Python 3.10+
+- **Data Processing:** Pandas, NumPy
+- **Excel Support:** Openpyxl
+- **AI Integration:** Google GenAI SDK (`google-genai`)
+- **Environment Management:** Pydantic Settings, Python-Dotenv
+- **File Handling:** Pathlib, UUID, Shutil
+
 ## Project Structure
 
 ```text
@@ -68,17 +109,16 @@ npm run dev
 
 - **Frontend URL:** [http://localhost:5173](http://localhost:5173)
 
-## How it Works
+## Hybrid AI Architecture
 
 1. **Upload:** Upload a `.csv` or `.xlsx` file. The backend profiles the data using Pandas to extract column names, types, and sample statistics.
-2. **Profile:** A compact structured context is generated.
-3. **Chat:** When you ask a question:
-   - The backend first tries to answer directly via Python (e.g., "how many rows?").
-   - If complexity is high, it sends the compact context + your question to Gemini.
-4. **Model Discovery:** The backend automatically lists available Gemini models and selects the best one (Flash/Pro) that supports content generation, avoiding "404 model not found" errors.
+2. **Persistence:** Files are stored in `backend/uploads/` and tracked via a registry.
+3. **Deterministic First:** When you ask a question, the `Data Query Service` first attempts to answer using deterministic Pandas logic (e.g., averages, counts, distributions).
+4. **AI Fallback:** If the query requires interpretation, reasoning, or narrative insights, the `Gemini Service` is invoked with a structured context of the dataset.
+5. **Model Discovery:** The system automatically selects the best available Gemini model (Flash/Pro) based on your API key.
 
 ## Troubleshooting
 
-- **Gemini 404 Errors:** The app uses `client.models.list()` at startup to pick a working model. Ensure your API key is valid.
-- **File Upload Errors:** Ensure the file is not open in Excel while uploading (Excel sometimes locks files).
+- **Gemini 404/403 Errors:** Ensure your API key is valid and has not been reported as leaked.
+- **File Upload Errors:** Ensure the file is not open in Excel while uploading.
 - **CORS Issues:** If the frontend can't talk to the backend, verify `CORS_ORIGINS` in `backend/.env` matches your frontend URL.

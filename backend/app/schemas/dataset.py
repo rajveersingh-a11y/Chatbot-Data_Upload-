@@ -23,5 +23,5 @@ class ChatResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
-    gemini_initialized: bool
+    nvidia_initialized: bool
     active_model: Optional[str] = None

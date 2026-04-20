@@ -5,10 +5,11 @@ import os
 
 class Settings(BaseSettings):
     # Mandatory
-    GEMINI_API_KEY: str
+    NVIDIA_API_KEY: str
     
     # Optional with Defaults
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    NVIDIA_MODEL: str = "nvidia/llama-3.3-nemotron-super-49b-v1"
+    NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
     APP_HOST: str = "0.0.0.0"
     APP_PORT: int = 8000
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
@@ -38,7 +39,7 @@ except Exception as e:
     # Print a clean error if validation fails (e.g. missing API key)
     import sys
     print(f"\n[BACKEND CONFIG ERROR] Initialization failed: {e}")
-    print("Please ensure your 'backend/.env' file exists and contains GEMINI_API_KEY.\n")
+    print("Please ensure your 'backend/.env' file exists and contains NVIDIA_API_KEY.\n")
     # We allow the app to import but it will likely fail later if we don't exit.
     # However, to avoid crashing the whole import chain if not desired, 
     # we could just set a flag. But the user said "raise a clean readable backend error".

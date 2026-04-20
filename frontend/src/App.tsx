@@ -22,7 +22,7 @@ const MessageBubble = ({ sender, text, model }: { sender: 'user' | 'ai', text: s
     <div className={`flex items-center gap-2 mb-1 px-1`}>
       {sender === 'ai' ? <Bot size={14} className="text-blue-500" /> : <User size={14} className="text-gray-500" />}
       <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-        {sender === 'ai' ? (model || 'Gemini AI') : 'You'}
+        {sender === 'ai' ? (model || 'NVIDIA NIM') : 'You'}
       </span>
     </div>
     <div className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${
@@ -202,7 +202,7 @@ export default function App() {
             {chatLoading && (
               <div className="flex items-center gap-2 p-4 text-blue-500 justify-center">
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span className="text-xs font-semibold uppercase tracking-widest italic">Gemini is thinking...</span>
+                <span className="text-xs font-semibold uppercase tracking-widest italic">NVIDIA is thinking...</span>
               </div>
             )}
           </div>
@@ -232,7 +232,7 @@ export default function App() {
 
       {/* Footer Info */}
       <footer className="px-6 py-3 border-t border-gray-200 text-center text-xs text-gray-400 bg-white">
-        Simple Data Chatbot MVP • Built with FastAPI, React & Gemini 1.5/2.0+
+        Simple Data Chatbot MVP • Built with FastAPI, React & NVIDIA NIM Llama 3.3
       </footer>
     </div>
   );

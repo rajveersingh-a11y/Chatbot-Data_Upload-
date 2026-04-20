@@ -1,6 +1,6 @@
-# DataChat MVP
+# DataChat RAG MVP
 
-A simple, working local MVP to chat with your CSV or Excel datasets using FastAPI, React, and Gemini AI.
+A powerful local MVP to chat with your CSV or Excel datasets using FastAPI, React, NVIDIA NIM, and RAG (Retrieval-Augmented Generation).
 
 ## Project Architecture
 
@@ -12,113 +12,80 @@ graph TD
     subgraph Backend Services
         Backend -->|Load/Profile| DS[Dataset Service]
         DS -->|Store| Storage[(uploads/)]
+        DS -->|Row-wise Chunks| RS[RAG Service]
+        RS -->|Embed Chunks| ES[Embedding Service]
+        ES -->|Persist Vectors| Chroma[(ChromaDB)]
+        
         Backend -->|Route Question| DQS[Data Query Service]
         DQS -->|Deterministic Pandas Query| DS
-        Backend -->|Natural Language Reasoning| GS[Gemini Service]
-        GS -->|Prompt with Context| GeminiAPI[Google Gemini API]
+        
+        Backend -->|Natural Language Reasoning| RS
+        RS -->|Retrieve Top-K Context| Chroma
+        RS -->|Grounded Prompt| NS[NVIDIA Service]
+        NS -->|LLM Completion| NIM[NVIDIA NIM API]
     end
     
     DQS -->|Return Python Result| Backend
-    GS -->|Return AI Result| Backend
+    NS -->|Return AI Result| Backend
     Backend -->|Return JSON Response| Frontend
 ```
 
-## Detailed Tech Stack
+## Key RAG Features
+- **Row-wise Chunking**: Each row in your dataset is treated as a separate retrievable document.
+- **Local Embeddings**: Uses `sentence-transformers/all-MiniLM-L6-v2` for fast, local vector generation.
+- **Vector Search**: Leverages **ChromaDB** for persistent, local storage and semantic retrieval.
+- **Grounded AI**: The AI only answers based on the specific relevant rows retrieved from your data.
+
+## Tech Stack
 
 ### Frontend
 - **Framework:** React 18
 - **Build Tool:** Vite
-- **Language:** TypeScript
 - **Styling:** Tailwind CSS
-- **API Client:** Axios
-- **State Management:** React Hooks (useState/useEffect)
 
 ### Backend
 - **Framework:** FastAPI
-- **Web Server:** Uvicorn
-- **Language:** Python 3.10+
-- **Data Processing:** Pandas, NumPy
-- **Excel Support:** Openpyxl
-- **AI Integration:** Google GenAI SDK (`google-genai`)
-- **Environment Management:** Pydantic Settings, Python-Dotenv
-- **File Handling:** Pathlib, UUID, Shutil
-
-## Project Structure
-
-```text
-backend/         # FastAPI server
-frontend/        # React + Vite client
-README.md        # This file
-.gitignore
-```
+- **Data Processing:** Pandas
+- **Vector DB:** ChromaDB
+- **Embeddings:** Sentence-Transformers (local)
+- **AI Integration:** NVIDIA NIM API (Llama 3.3)
 
 ## Prerequisites
-
 - [Python 3.10+](https://www.python.org/downloads/)
 - [Node.js 18+](https://nodejs.org/)
-- A Google Gemini API Key
+- An **NVIDIA API Key** (from NVIDIA Build/NIM)
 
 ## Local Setup (Windows PowerShell)
 
 ### 1. Backend Setup
-
-Open a new PowerShell window:
-
 ```powershell
-# Navigate to backend
 cd backend
 
-# Create Virtual Environment
+# Create & Activate Virtual Environment
 python -m venv venv
-
-# Activate Environment
 .\venv\Scripts\Activate.ps1
-
-# If you get an execution policy error, run:
-# Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-# .\venv\Scripts\Activate.ps1
 
 # Install Dependencies
 pip install -r requirements.txt
 
 # Configure Environment
-# Open backend/.env and add your GEMINI_API_KEY
-# Default model fallback logic will handle version mismatches automatically.
-
-# Run Server
-uvicorn app.main:app --reload
+# Rename .env.example to .env and add your NVIDIA_API_KEY
 ```
 
-- **Backend URL:** [http://localhost:8000](http://localhost:8000)
-- **API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
-
 ### 2. Frontend Setup
-
-Open a second PowerShell window:
-
 ```powershell
-# Navigate to frontend
 cd frontend
-
-# Install Dependencies
 npm install
-
-# Run Dev Server
 npm run dev
 ```
 
-- **Frontend URL:** [http://localhost:5173](http://localhost:5173)
+## How It Works
+1. **Upload**: When a file is uploaded, it is summarized and every row is embedded and stored in a local ChromaDB collection.
+2. **Chat**:
+   - The system first tries a **deterministic** answer using Pandas (for counts, sums, etc.).
+   - If not found, it performs a **semantic search** in ChromaDB for the top 5 most relevant rows.
+   - These rows are sent to the NVIDIA Llama 3.3 model as grounded context to generate a natural language answer.
 
-## Hybrid AI Architecture
-
-1. **Upload:** Upload a `.csv` or `.xlsx` file. The backend profiles the data using Pandas to extract column names, types, and sample statistics.
-2. **Persistence:** Files are stored in `backend/uploads/` and tracked via a registry.
-3. **Deterministic First:** When you ask a question, the `Data Query Service` first attempts to answer using deterministic Pandas logic (e.g., averages, counts, distributions).
-4. **AI Fallback:** If the query requires interpretation, reasoning, or narrative insights, the `Gemini Service` is invoked with a structured context of the dataset.
-5. **Model Discovery:** The system automatically selects the best available Gemini model (Flash/Pro) based on your API key.
-
-## Troubleshooting
-
-- **Gemini 404/403 Errors:** Ensure your API key is valid and has not been reported as leaked.
-- **File Upload Errors:** Ensure the file is not open in Excel while uploading.
-- **CORS Issues:** If the frontend can't talk to the backend, verify `CORS_ORIGINS` in `backend/.env` matches your frontend URL.
+## Storage
+- **Uploads**: `backend/uploads/`
+- **Vector Store**: `backend/chroma_store/`

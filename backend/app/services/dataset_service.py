@@ -6,6 +6,7 @@ import uuid
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from app.core.config import settings
+from app.services.rag_service import rag_service
 
 logger = logging.getLogger(__name__)
 
@@ -59,14 +60,19 @@ class DatasetService:
             # Store in cache
             self._cache[dataset_id] = df
             
+            # RAG Indexing
+            indexed_count = rag_service.index_dataframe(df, dataset_id, file_path.name)
+            
             # Register metadata
             metadata = {
                 "dataset_id": dataset_id,
                 "filename": file_path.name,
-                "original_name": file_path.name, # could be different
+                "original_name": file_path.name,
                 "row_count": len(df),
                 "column_count": len(df.columns),
-                "columns": df.columns.tolist()
+                "columns": df.columns.tolist(),
+                "rag_indexed": True,
+                "indexed_row_count": indexed_count
             }
             self._save_to_registry(dataset_id, metadata)
             

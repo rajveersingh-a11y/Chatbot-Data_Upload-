@@ -7,6 +7,8 @@ class UploadResponse(BaseModel):
     row_count: int
     column_count: int
     columns: List[str]
+    rag_indexed: bool = False
+    indexed_row_count: int = 0
 
 class ChatRequest(BaseModel):
     dataset_id: str
@@ -19,6 +21,7 @@ class ChatResponse(BaseModel):
     confidence: float = 0.0
     source_columns: List[str] = []
     dataset_id: str
+    retrieved_rows: List[int] = []
     warnings: List[str] = []
 
 class HealthResponse(BaseModel):

@@ -7,6 +7,8 @@ from app.schemas.dataset import UploadResponse, ChatRequest, ChatResponse, Healt
 from app.services.data_query_service import try_answer_with_pandas
 from app.services.dataset_service import dataset_service
 from app.services.nvidia_service import nvidia_service
+from app.services.rag_service import rag_service
+from app.services.chroma_service import chroma_service
 from app.core.config import settings
 
 router = APIRouter()
@@ -70,17 +72,37 @@ async def chat_with_data(request: ChatRequest):
                 dataset_id=request.dataset_id
             )
         
-        # 2. NVIDIA fallback
-        context = dataset_service.get_context_for_nvidia(request.dataset_id)
-        prompt = f"""
-        You are a senior data analyst. Use the context to answer the user question.
-        GUIDELINES:
-        - Answer ONLY based on the context.
-        - Use context for INSIGHTS and INTERPRETATION.
-        - If unsure, say you cannot answer.
+        # 2. NVIDIA fallback with RAG
+        summary_context = dataset_service.get_context_for_nvidia(request.dataset_id)
+        rag_context = rag_service.get_relevant_context(request.message, request.dataset_id)
         
-        CONTEXT:
-        {context}
+        # Get retrieved row indices for metadata (optional but requested)
+        query_embedding = None # We already did this inside rag_service, but we want the indices
+        # Let's simplify: the rag_service already has the logic, 
+        # but to satisfy "retrieved_rows" we might need a list of indices.
+        # I'll update rag_service to return documents AND indices if needed, 
+        # or just query chroma again for indices.
+        # Let's just use chroma_service directly here for the list of indices.
+        from app.services.embedding_service import embedding_service
+        q_emb = embedding_service.embed_query(request.message)
+        top_k_rows = chroma_service.query_rows(q_emb, request.dataset_id, settings.RAG_TOP_K)
+        retrieved_indices = [int(item["metadata"]["row_index"]) for item in top_k_rows]
+
+        prompt = f"""
+        You are a senior data analyst assistant. Answer the user question based ONLY on the provided context.
+        
+        ### DATASET SUMMARY
+        {summary_context}
+        
+        ### RETRIEVED RELEVANT ROWS
+        {rag_context}
+        
+        ### INSTRUCTIONS
+        - Answer ONLY from the provided retrieved context and summary.
+        - Do NOT hallucinate columns or values.
+        - If the answer cannot be inferred, say: "I’m sorry, I cannot answer that from the retrieved dataset context."
+        - Cite relevant row indices (e.g., [Row 15]) when possible.
+        - Be concise and structured.
         
         USER QUESTION:
         {request.message}
@@ -94,16 +116,18 @@ async def chat_with_data(request: ChatRequest):
                 answer=res["answer"],
                 model_used=res.get("model_used", "nvidia"),
                 dataset_id=request.dataset_id,
+                retrieved_rows=retrieved_indices,
                 error=True
             )
         
         return ChatResponse(
             answer=res["answer"],
             model_used=res.get("model_used", "nvidia"),
-            answer_type="insight",
-            confidence=0.8 if not res.get("error") else 0.0,
+            answer_type="rag",
+            confidence=0.8,
             dataset_id=request.dataset_id,
-            warnings=["AI fallback triggered"] if res.get("error") else []
+            retrieved_rows=retrieved_indices,
+            warnings=["RAG context used"]
         )
         
     except HTTPException as he:

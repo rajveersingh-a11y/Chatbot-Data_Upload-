@@ -17,12 +17,14 @@ const ErrorBanner = ({ message }: { message: string }) => (
   </div>
 );
 
-const MessageBubble = ({ sender, text, model }: { sender: 'user' | 'ai', text: string, model?: string }) => (
+const MessageBubble = ({ sender, text, model, type, rows }: { sender: 'user' | 'ai', text: string, model?: string, type?: string, rows?: number[] }) => (
   <div className={`flex flex-col mb-4 ${sender === 'user' ? 'items-end' : 'items-start'}`}>
     <div className={`flex items-center gap-2 mb-1 px-1`}>
       {sender === 'ai' ? <Bot size={14} className="text-blue-500" /> : <User size={14} className="text-gray-500" />}
       <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
         {sender === 'ai' ? (model || 'NVIDIA NIM') : 'You'}
+        {sender === 'ai' && type === 'rag' && <span className="ml-2 bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded text-[9px] font-bold">RAG</span>}
+        {sender === 'ai' && type === 'deterministic' && <span className="ml-2 bg-green-100 text-green-600 px-1.5 py-0.5 rounded text-[9px] font-bold">DATA</span>}
       </span>
     </div>
     <div className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${
@@ -44,7 +46,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Array<{sender: 'user' | 'ai', text: string, model?: string}>>([]);
+  const [messages, setMessages] = useState<Array<{sender: 'user' | 'ai', text: string, model?: string, type?: string, rows?: number[]}>>([]);
   const [query, setQuery] = useState('');
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,7 +81,13 @@ export default function App() {
 
     try {
       const res = await sendChatMessage(datasetInfo.dataset_id, userMsg);
-      setMessages(prev => [...prev, { sender: 'ai', text: res.answer, model: res.model_used }]);
+      setMessages(prev => [...prev, { 
+        sender: 'ai', 
+        text: res.answer, 
+        model: res.model_used,
+        type: res.answer_type,
+        rows: res.retrieved_rows
+      }]);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Chat service error.");
       setMessages(prev => [...prev, { 
@@ -196,7 +204,7 @@ export default function App() {
               </div>
             ) : (
               messages.map((m, i) => (
-                <MessageBubble key={i} sender={m.sender} text={m.text} model={m.model} />
+                <MessageBubble key={i} sender={m.sender} text={m.text} model={m.model} type={m.type} rows={m.rows} />
               ))
             )}
             {chatLoading && (

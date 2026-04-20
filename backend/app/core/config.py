@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_MB: int = 20
+    CHROMA_PERSIST_DIR: str = "chroma_store"
+    EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
+    RAG_TOP_K: int = 5
 
     @property
     def cors_origins_list(self) -> List[str]:
@@ -24,6 +27,13 @@ class Settings(BaseSettings):
     def upload_path(self) -> Path:
         base_dir = Path(__file__).resolve().parent.parent.parent
         path = base_dir / self.UPLOAD_DIR
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    @property
+    def chroma_path(self) -> Path:
+        base_dir = Path(__file__).resolve().parent.parent.parent
+        path = base_dir / self.CHROMA_PERSIST_DIR
         path.mkdir(parents=True, exist_ok=True)
         return path
 
